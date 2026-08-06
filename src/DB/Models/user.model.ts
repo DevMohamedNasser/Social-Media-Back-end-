@@ -1,0 +1,114 @@
+import mongoose, { HydratedDocument, Model, Schema, Types } from "mongoose";
+import {
+  GenderEnum,
+  ProviderEnum,
+  RoleEnum,
+} from "../../Utils/enums/user.enum";
+
+export interface IUser {
+  _id: Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  username?: string;
+
+  email: string;
+  confirmEmailOTP?: string;
+  confirmEmailOTPExp: Date;
+  confirmedAt: Date;
+  password: string;
+  resetPasswordOTP?: string;
+  forgetPasswordOTP?: string;
+  forgetPasswordOTPExp: Date;
+
+  phone?: string;
+  address?: string;
+  profilePic: string;
+  provider: ProviderEnum;
+
+  gender: GenderEnum;
+  role: RoleEnum;
+
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export const userSchema = new Schema<IUser>(
+  {
+    firstName: {
+      type: String,
+      minLength: [2, "Must be at least 2 chars long"],
+      maxLength: [25, "Must be at most 25 chars long"],
+      required: [true, "firstName is required"],
+    },
+    lastName: {
+      type: String,
+      minLength: [2, "Must be at least 2 chars long"],
+      maxLength: [25, "Must be at most 25 chars long"],
+      required: [true, "lastName is required"],
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    provider: {
+      type: Number,
+      enum: [ProviderEnum.System, ProviderEnum.Google],
+      default: ProviderEnum.System,
+    },
+    confirmEmailOTP: String,
+    confirmEmailOTPExp: Date,
+    confirmedAt: Date,
+    password: {
+      type: String,
+      required: function(this) {
+        return this.provider == ProviderEnum.System;
+      }
+    },
+    resetPasswordOTP: String,
+    forgetPasswordOTP: String,
+    forgetPasswordOTPExp: Date,
+    address: String,
+    gender: {
+      type: String,
+      enum: Object.values(GenderEnum),
+      default: GenderEnum.MALE,
+    },
+    role: {
+      type: String,
+      enum: Object.values(RoleEnum),
+      default: RoleEnum.USER,
+    },
+    phone: String,
+    profilePic: String,
+  },
+  {
+    timestamps: true,
+    toObject: { virtuals: true },
+    toJSON: {
+      transform(doc, ret: Record<string, unknown>) {
+        delete ret.password;
+        delete ret.confirmEmailOTP;
+        delete ret.resetPasswordOTP;
+        return ret;
+      },
+    },
+  },
+);
+
+userSchema
+  .virtual("username")
+  .set(function (value: string) {
+    const [firstName, ...rest] = value.trim().split(/\s+/);
+    this.set({ firstName, lastName: rest.join(" ") });
+  })
+  .get(function (this: IUser) {
+    return `${this.firstName} ${this.lastName}`;
+  });
+
+export const userModel: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+
+export type HUserDocument = HydratedDocument<IUser>;
