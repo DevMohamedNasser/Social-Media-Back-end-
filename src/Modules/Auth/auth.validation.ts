@@ -66,7 +66,7 @@ export const changePasswordSchema = {
 
 export const googleOAuthSchema = {
   body: z.object({
-    idToken: z.string({error: "idToken is required"}),
+    idToken: z.string({ error: "idToken is required" }),
   }),
 };
 

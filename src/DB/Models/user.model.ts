@@ -28,6 +28,9 @@ export interface IUser {
   gender: GenderEnum;
   role: RoleEnum;
 
+  friends: Types.ObjectId[];
+  blockedUsers: Types.ObjectId[];
+
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -63,9 +66,9 @@ export const userSchema = new Schema<IUser>(
     confirmedAt: Date,
     password: {
       type: String,
-      required: function(this) {
+      required: function (this) {
         return this.provider == ProviderEnum.System;
-      }
+      },
     },
     resetPasswordOTP: String,
     forgetPasswordOTP: String,
@@ -83,11 +86,25 @@ export const userSchema = new Schema<IUser>(
     },
     phone: String,
     profilePic: String,
+
+    friends: [
+      {
+        type: Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    blockedUsers: [
+      {
+        type: Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
     toObject: { virtuals: true },
     toJSON: {
+      virtuals: true,
       transform(doc, ret: Record<string, unknown>) {
         delete ret.password;
         delete ret.confirmEmailOTP;

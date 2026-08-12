@@ -68,7 +68,7 @@ exports.userSchema = new mongoose_1.Schema({
         type: String,
         required: function () {
             return this.provider == user_enum_1.ProviderEnum.System;
-        }
+        },
     },
     resetPasswordOTP: String,
     forgetPasswordOTP: String,
@@ -86,10 +86,23 @@ exports.userSchema = new mongoose_1.Schema({
     },
     phone: String,
     profilePic: String,
+    friends: [
+        {
+            type: mongoose_1.Types.ObjectId,
+            ref: "User",
+        },
+    ],
+    blockedUsers: [
+        {
+            type: mongoose_1.Types.ObjectId,
+            ref: "User",
+        },
+    ],
 }, {
     timestamps: true,
     toObject: { virtuals: true },
     toJSON: {
+        virtuals: true,
         transform(doc, ret) {
             delete ret.password;
             delete ret.confirmEmailOTP;
