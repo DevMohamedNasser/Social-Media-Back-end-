@@ -6,8 +6,6 @@ import {
 } from "../../Utils/enums/user.enum";
 import { Encrypt } from "../../Utils/Security/encryption.security";
 import { generateHash } from "../../Utils/Security/hash.security";
-import { emailEvent } from "../../Utils/events/email.event";
-import generateOTP from "../../Utils/email/generateOTP";
 
 export interface IUser {
   _id: Types.ObjectId;
