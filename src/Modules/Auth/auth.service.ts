@@ -29,10 +29,13 @@ class AuthService {
   constructor() {}
 
   signup = async (req: Request, res: Response): Promise<Response> => {
-    const { email, password, username, gender }: ISignupDTO = req.body;
+    const { email, password, username, gender, phone }: ISignupDTO = req.body;
 
     const isExist = await userModel.findOne({ email }).select("email");
     if (isExist) throw new ConflictException("User already exists");
+
+    // let encryptedPhone;
+    // if (phone) encryptedPhone = Encrypt(phone);
 
     const otp = generateOTP();
 
@@ -41,7 +44,10 @@ class AuthService {
         {
           username,
           email,
-          password: await generateHash(password),
+          // password: await generateHash(password),
+          password,
+          // ...(phone ? { phone: encryptedPhone } : {}),
+          ...(phone && { phone }),
           confirmEmailOTP: await generateHash(otp),
           gender,
           confirmEmailOTPExp: Date.now() + 1 * 1000 * 60,

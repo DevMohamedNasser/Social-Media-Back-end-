@@ -36,6 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.userModel = exports.userSchema = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const user_enum_1 = require("../../Utils/enums/user.enum");
+const encryption_security_1 = require("../../Utils/Security/encryption.security");
+const hash_security_1 = require("../../Utils/Security/hash.security");
 exports.userSchema = new mongoose_1.Schema({
     firstName: {
         type: String,
@@ -84,7 +86,12 @@ exports.userSchema = new mongoose_1.Schema({
         enum: Object.values(user_enum_1.RoleEnum),
         default: user_enum_1.RoleEnum.USER,
     },
-    phone: String,
+    phone: {
+        type: String,
+        required: function () {
+            return this.provider == user_enum_1.ProviderEnum.System;
+        },
+    },
     profilePic: String,
     friends: [
         {
@@ -119,5 +126,54 @@ exports.userSchema
 })
     .get(function () {
     return `${this.firstName} ${this.lastName}`;
+});
+/** Mongoose Middleware/Hooks */
+/** pre middleware latest version doesn't require next() but required in post middleware */
+// userSchema.pre("save", function () {
+//   console.log("Pre save", this);
+// });
+// userSchema.pre("save", function () {
+//   console.log("Pre save #2", this);
+// });
+// userSchema.post("save", function (doc, next) {
+//   console.log("Post Save Middleware", doc);
+//   next();
+// });
+/** Document Middleware => validate. works on save() option validateBeforeSave:true by default it's true */
+// userSchema.pre("validate", function () {
+//   console.log(this);
+//   this.email = this.email.toLowerCase().trim();
+// });
+exports.userSchema.pre("save", async function () {
+    // console.log(this.isModified("phone"), this.modifiedPaths(), this.isNew);
+    if (this.phone)
+        this.phone = (0, encryption_security_1.Encrypt)(this.phone);
+    if (this.provider == user_enum_1.ProviderEnum.System)
+        this.password = await (0, hash_security_1.generateHash)(this.password);
+    // console.log(this.isNew);
+    this.wasNew = this.isNew;
+});
+// userSchema.post("save", async function () {
+//   // if (this.phone) {
+//   //   const phone = Decrypt(this.phone);
+//   //   console.log("phone: ", phone);
+//   // }
+//   // console.log(this.isNew); // always false
+//   const that = this as HUserDocument & { wasNew: boolean };
+//   // console.log(that.wasNew);
+//   if (that.wasNew) {
+//     emailEvent.emit("confirmEmail", {
+//       to: this.email,
+//       username: this.username,
+//       otp: generateOTP(),
+//     });
+//   }
+// });
+exports.userSchema.pre("insertMany", async function (docs) {
+    console.log(this, docs);
+});
+exports.userSchema.post("insertMany", async function (docs, next) {
+    console.log(this, docs);
+    next();
 });
 exports.userModel = mongoose_1.default.models.User || mongoose_1.default.model("User", exports.userSchema);

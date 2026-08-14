@@ -16,6 +16,7 @@ const error_response_1 = require("./Utils/response/error.response");
 const Modules_1 = require("./Modules");
 const connection_1 = __importDefault(require("./DB/connection"));
 const node_path_1 = __importDefault(require("node:path"));
+const user_model_1 = require("./DB/Models/user.model");
 // const limiter: RateLimitRequestHandler = rateLimit({
 //   windowMs: env.WINDOW_MS,
 //   limit: env.RATE_LIMIT,
@@ -39,6 +40,18 @@ const bootstrap = async () => {
     app.use("/api/v1/auth", Modules_1.authRouter);
     app.use("/api/v1/post", Modules_1.postRouter);
     app.use("/api/v1/user", Modules_1.userRouter);
+    // const user = new userModel({
+    //   username: "Mhmd Ali",
+    //   email: `${Date.now()}@GMAIL.com`,
+    //   password: "Secret@123",
+    //   phone: "01010101010",
+    // }).save();
+    await user_model_1.userModel.insertMany([{
+            username: "Mhmd Ahmd",
+            email: "x@gmail.com",
+            password: "Secret#123",
+            phone: "01070700777",
+        }]);
     app.use("/:dummy", (req, res) => {
         throw new error_response_1.NotFoundException("Not Found Handler (Route)");
     });

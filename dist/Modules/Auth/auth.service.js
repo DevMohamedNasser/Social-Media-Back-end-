@@ -15,16 +15,21 @@ const user_enum_1 = require("../../Utils/enums/user.enum");
 class AuthService {
     constructor() { }
     signup = async (req, res) => {
-        const { email, password, username, gender } = req.body;
+        const { email, password, username, gender, phone } = req.body;
         const isExist = await user_model_1.userModel.findOne({ email }).select("email");
         if (isExist)
             throw new error_response_1.ConflictException("User already exists");
+        // let encryptedPhone;
+        // if (phone) encryptedPhone = Encrypt(phone);
         const otp = (0, generateOTP_1.default)();
         const user = await user_model_1.userModel.create([
             {
                 username,
                 email,
-                password: await (0, hash_security_1.generateHash)(password),
+                // password: await generateHash(password),
+                password,
+                // ...(phone ? { phone: encryptedPhone } : {}),
+                ...(phone && { phone }),
                 confirmEmailOTP: await (0, hash_security_1.generateHash)(otp),
                 gender,
                 confirmEmailOTPExp: Date.now() + 1 * 1000 * 60,

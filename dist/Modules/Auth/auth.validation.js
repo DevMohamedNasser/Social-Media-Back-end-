@@ -109,6 +109,7 @@ exports.signupSchema = {
             .string({ error: "password is required" })
             .min(6, { error: "password must be at least 6 chars long" }),
         gender: z.enum(user_enum_1.GenderEnum).default(user_enum_1.GenderEnum.MALE),
+        phone: z.string().regex(/^(?:0|\+20|020)1[0125][\d]{8}$/, { error: "Invalid egyptian phone number" }).optional()
     })
         .superRefine((data, ctx) => {
         if (data.password !== data.confirmPassword) {
