@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_response_1 = require("../../Utils/response/error.response");
 const user_model_1 = require("../../DB/Models/user.model");
 const friendRequest_model_1 = require("../../DB/Models/friendRequest.model");
+const notification_event_1 = require("../../Utils/events/notification.event");
 class UserService {
     constructor() { }
     sendFriendRequest = async (req, res) => {
@@ -29,6 +30,11 @@ class UserService {
         const friendRequest = await friendRequest_model_1.friendRequestModel.create({
             sendBy: senderId,
             sendTo: targetUser._id,
+        });
+        notification_event_1.notificationEvent.emit("friendRequest", {
+            to: targetUser._id,
+            sender: req.user,
+            requestId: friendRequest._id,
         });
         return res
             .status(201)
@@ -57,6 +63,10 @@ class UserService {
                 $addToSet: { friends: friendRequest.sendTo },
             }),
         ]);
+        notification_event_1.notificationEvent.emit("friendAccepted", {
+            to: friendRequest.sendBy,
+            sender: req.user,
+        });
         await friendRequest_model_1.friendRequestModel.deleteOne({ _id: requestId });
         return res.status(200).json({ message: "Friend request accepted" });
     };

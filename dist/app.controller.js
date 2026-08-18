@@ -16,7 +16,7 @@ const error_response_1 = require("./Utils/response/error.response");
 const Modules_1 = require("./Modules");
 const connection_1 = __importDefault(require("./DB/connection"));
 const node_path_1 = __importDefault(require("node:path"));
-const user_model_1 = require("./DB/Models/user.model");
+const firebase_config_1 = require("./Utils/firebase/firebase.config");
 // const limiter: RateLimitRequestHandler = rateLimit({
 //   windowMs: env.WINDOW_MS,
 //   limit: env.RATE_LIMIT,
@@ -33,6 +33,7 @@ const bootstrap = async () => {
     app.use((0, helmet_1.default)(), (0, cors_1.default)(cors_2.corsOptions), (0, rateLimit_middleware_1.customRateLimiter)());
     app.use(express_1.default.json());
     await (0, connection_1.default)();
+    (0, firebase_config_1.initializeFirebase)();
     app.get("/", (req, res) => {
         return res.status(200).json({ message: `Welcome To ${config_service_1.env.APP_NAME} App` });
     });
@@ -40,18 +41,7 @@ const bootstrap = async () => {
     app.use("/api/v1/auth", Modules_1.authRouter);
     app.use("/api/v1/post", Modules_1.postRouter);
     app.use("/api/v1/user", Modules_1.userRouter);
-    // const user = new userModel({
-    //   username: "Mhmd Ali",
-    //   email: `${Date.now()}@GMAIL.com`,
-    //   password: "Secret@123",
-    //   phone: "01010101010",
-    // }).save();
-    await user_model_1.userModel.insertMany([{
-            username: "Mhmd Ahmd",
-            email: "x@gmail.com",
-            password: "Secret#123",
-            phone: "01070700777",
-        }]);
+    app.use("/api/v1/notification", Modules_1.notificationRouter);
     app.use("/:dummy", (req, res) => {
         throw new error_response_1.NotFoundException("Not Found Handler (Route)");
     });

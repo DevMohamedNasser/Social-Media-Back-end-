@@ -11,9 +11,15 @@ import {
   globalErrorHandler,
   NotFoundException,
 } from "./Utils/response/error.response";
-import { authRouter, postRouter, userRouter } from "./Modules";
+import {
+  authRouter,
+  notificationRouter,
+  postRouter,
+  userRouter,
+} from "./Modules";
 import connectDB from "./DB/connection";
 import path from "node:path";
+import { initializeFirebase } from "./Utils/firebase/firebase.config";
 
 // const limiter: RateLimitRequestHandler = rateLimit({
 //   windowMs: env.WINDOW_MS,
@@ -33,6 +39,7 @@ const bootstrap = async (): Promise<void> => {
   app.use(helmet(), cors(corsOptions), customRateLimiter());
   app.use(express.json());
   await connectDB();
+  initializeFirebase();
 
   app.get("/", (req: Request, res: Response) => {
     return res.status(200).json({ message: `Welcome To ${env.APP_NAME} App` });
@@ -42,6 +49,7 @@ const bootstrap = async (): Promise<void> => {
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/post", postRouter);
   app.use("/api/v1/user", userRouter);
+  app.use("/api/v1/notification", notificationRouter);
 
   app.use("/:dummy", (req: Request, res: Response) => {
     throw new NotFoundException("Not Found Handler (Route)");

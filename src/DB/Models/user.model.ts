@@ -33,6 +33,9 @@ export interface IUser {
   friends: Types.ObjectId[];
   blockedUsers: Types.ObjectId[];
 
+  deviceTokens?: string[]; /** FCM Firebase Tokens */
+  notificationEnabled: boolean;
+
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -106,6 +109,16 @@ export const userSchema = new Schema<IUser>(
         ref: "User",
       },
     ],
+
+    deviceTokens: [
+      {
+        type: String,
+      },
+    ],
+    notificationEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
@@ -186,13 +199,13 @@ userSchema.pre(
 //   }
 // });
 
-userSchema.pre("insertMany", async function(docs) {
-  console.log(this, docs);
-})
-userSchema.post("insertMany", async function(docs, next) {
-  console.log(this, docs);
-  next();
-})
+// userSchema.pre("insertMany", async function (docs) {
+//   console.log(this, docs);
+// });
+// userSchema.post("insertMany", async function (docs, next) {
+//   console.log(this, docs);
+//   next();
+// });
 
 export const userModel: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);

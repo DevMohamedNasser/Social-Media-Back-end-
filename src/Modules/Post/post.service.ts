@@ -16,6 +16,8 @@ import {
 } from "../../Utils/response/error.response";
 import { postModel, reactEnum } from "../../DB/Models/post.model";
 import { commentModel } from "../../DB/Models/comment.model";
+import { notificationEvent } from "../../Utils/events/notification.event";
+import { Types } from "mongoose";
 
 class PostService {
   constructor() {}
@@ -88,6 +90,14 @@ class PostService {
         .lean();
     }
 
+    if (!existingReact || existingReact?.react != react) {
+      notificationEvent.emit("postLiked", {
+        to: post.createdBy,
+        sender: req.user!,
+        postId: post._id,
+      });
+    }
+
     return res.status(200).json({
       message: !existingReact
         ? "Reacted"
@@ -154,6 +164,7 @@ class PostService {
       throw new ForbiddenException("Post not found or u aren't author");
 
     // Delete Related comments
+    await commentModel.deleteMany({ postId });
 
     return res.status(200).json({ message: "Deleted" });
   };
@@ -185,9 +196,15 @@ class PostService {
     });
     if (!post) throw new NotFoundException("Post not found");
 
+    let parentAuthor: Types.ObjectId | undefined;
     if (parentId) {
-      const comment = await commentModel.findOne({ _id: parentId, postId });
-      if (!comment) throw new NotFoundException("Parent comment not exists!!!");
+      const parentComment = await commentModel.findOne({
+        _id: parentId,
+        postId,
+      });
+      if (!parentComment)
+        throw new NotFoundException("Parent comment not exists!!!");
+      parentAuthor = parentComment.createdBy;
     }
 
     const comment = await commentModel.create({
@@ -196,6 +213,24 @@ class PostService {
       ...(parentId && { parentId }),
       createdBy: req.user!.id,
     });
+
+    if (parentAuthor) {
+      notificationEvent.emit("commentReply", {
+        to: parentAuthor,
+        sender: req.user!,
+        postId: post._id,
+        commentId: comment._id,
+        content,
+      });
+    } else {
+      notificationEvent.emit("postComment", {
+        to: post.createdBy,
+        sender: req.user!,
+        postId,
+        commentId: comment._id,
+        content,
+      });
+    }
 
     return res
       .status(201)

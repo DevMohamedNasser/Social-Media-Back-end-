@@ -42,4 +42,5 @@ exports.env = {
     WHITE_LIST: process.env.WHITE_LIST,
     RATE_LIMIT: Number(process.env.RATE_LIMIT),
     WINDOW_MS: Number(process.env.WINDOW_MS),
+    FIREBASE_SYSTEM_ACCOUNT: "./config/social-media-5e51d-firebase-adminsdk-fbsvc-a7ec350a55.json"
 };

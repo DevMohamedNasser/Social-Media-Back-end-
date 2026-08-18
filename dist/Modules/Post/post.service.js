@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const error_response_1 = require("../../Utils/response/error.response");
 const post_model_1 = require("../../DB/Models/post.model");
 const comment_model_1 = require("../../DB/Models/comment.model");
+const notification_event_1 = require("../../Utils/events/notification.event");
 class PostService {
     constructor() { }
     createPost = async (req, res) => {
@@ -53,6 +54,13 @@ class PostService {
                 .populate("reacts.userId", "firstName lastName -_id")
                 .lean();
         }
+        if (!existingReact || existingReact?.react != react) {
+            notification_event_1.notificationEvent.emit("postLiked", {
+                to: post.createdBy,
+                sender: req.user,
+                postId: post._id,
+            });
+        }
         return res.status(200).json({
             message: !existingReact
                 ? "Reacted"
@@ -100,6 +108,7 @@ class PostService {
         if (!post)
             throw new error_response_1.ForbiddenException("Post not found or u aren't author");
         // Delete Related comments
+        await comment_model_1.commentModel.deleteMany({ postId });
         return res.status(200).json({ message: "Deleted" });
     };
     getSpecificPost = async (req, res) => {
@@ -125,10 +134,15 @@ class PostService {
         });
         if (!post)
             throw new error_response_1.NotFoundException("Post not found");
+        let parentAuthor;
         if (parentId) {
-            const comment = await comment_model_1.commentModel.findOne({ _id: parentId, postId });
-            if (!comment)
+            const parentComment = await comment_model_1.commentModel.findOne({
+                _id: parentId,
+                postId,
+            });
+            if (!parentComment)
                 throw new error_response_1.NotFoundException("Parent comment not exists!!!");
+            parentAuthor = parentComment.createdBy;
         }
         const comment = await comment_model_1.commentModel.create({
             content,
@@ -136,6 +150,24 @@ class PostService {
             ...(parentId && { parentId }),
             createdBy: req.user.id,
         });
+        if (parentAuthor) {
+            notification_event_1.notificationEvent.emit("commentReply", {
+                to: parentAuthor,
+                sender: req.user,
+                postId: post._id,
+                commentId: comment._id,
+                content,
+            });
+        }
+        else {
+            notification_event_1.notificationEvent.emit("postComment", {
+                to: post.createdBy,
+                sender: req.user,
+                postId,
+                commentId: comment._id,
+                content,
+            });
+        }
         return res
             .status(201)
             .json({ message: "Comment created successfully", comment });

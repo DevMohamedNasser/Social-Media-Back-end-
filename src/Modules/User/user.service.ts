@@ -8,6 +8,7 @@ import {
 } from "../../Utils/response/error.response";
 import { userModel } from "../../DB/Models/user.model";
 import { friendRequestModel } from "../../DB/Models/friendRequest.model";
+import { notificationEvent } from "../../Utils/events/notification.event";
 
 class UserService {
   constructor() {}
@@ -45,6 +46,12 @@ class UserService {
     const friendRequest = await friendRequestModel.create({
       sendBy: senderId,
       sendTo: targetUser._id,
+    });
+
+    notificationEvent.emit("friendRequest", {
+      to: targetUser._id,
+      sender: req.user!,
+      requestId: friendRequest._id,
     });
 
     return res
@@ -86,6 +93,11 @@ class UserService {
         $addToSet: { friends: friendRequest.sendTo },
       }),
     ]);
+
+    notificationEvent.emit("friendAccepted", {
+      to: friendRequest.sendBy,
+      sender: req.user!,
+    });
 
     await friendRequestModel.deleteOne({ _id: requestId });
 

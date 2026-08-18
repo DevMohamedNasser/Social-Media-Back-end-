@@ -105,6 +105,15 @@ exports.userSchema = new mongoose_1.Schema({
             ref: "User",
         },
     ],
+    deviceTokens: [
+        {
+            type: String,
+        },
+    ],
+    notificationEnabled: {
+        type: Boolean,
+        default: true,
+    },
 }, {
     timestamps: true,
     toObject: { virtuals: true },
@@ -169,11 +178,11 @@ exports.userSchema.pre("save", async function () {
 //     });
 //   }
 // });
-exports.userSchema.pre("insertMany", async function (docs) {
-    console.log(this, docs);
-});
-exports.userSchema.post("insertMany", async function (docs, next) {
-    console.log(this, docs);
-    next();
-});
+// userSchema.pre("insertMany", async function (docs) {
+//   console.log(this, docs);
+// });
+// userSchema.post("insertMany", async function (docs, next) {
+//   console.log(this, docs);
+//   next();
+// });
 exports.userModel = mongoose_1.default.models.User || mongoose_1.default.model("User", exports.userSchema);
