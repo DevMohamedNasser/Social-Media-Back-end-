@@ -24,6 +24,7 @@ import { getNewLoginCredentials } from "../../Utils/Security/tokens.security";
 import { env } from "../../Config/config.service";
 import { IPayloadGoogleOAuth } from "../../Utils/SocialLogin.interface";
 import { ProviderEnum } from "../../Utils/enums/user.enum";
+import { Encrypt } from "../../Utils/Security/encryption.security";
 
 class AuthService {
   constructor() {}
@@ -47,7 +48,7 @@ class AuthService {
           // password: await generateHash(password),
           password,
           // ...(phone ? { phone: encryptedPhone } : {}),
-          ...(phone && { phone }),
+          ...(phone && { phone: Encrypt(phone) }),
           confirmEmailOTP: await generateHash(otp),
           gender,
           confirmEmailOTPExp: Date.now() + 1 * 1000 * 60,

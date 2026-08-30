@@ -27,13 +27,15 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
-    "firebase-admin": "^14.2.0",
+    "firebase-admin": "^14.3.0",
     "google-auth-library": "^11.0.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.1",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.4",
+    "socket.io": "^4.8.3",
+    "uuid": "^14.0.2",
     "zod": "^4.4.3"
   }
 }

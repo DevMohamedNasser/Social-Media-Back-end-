@@ -12,6 +12,7 @@ const email_event_1 = require("../../Utils/events/email.event");
 const tokens_security_1 = require("../../Utils/Security/tokens.security");
 const config_service_1 = require("../../Config/config.service");
 const user_enum_1 = require("../../Utils/enums/user.enum");
+const encryption_security_1 = require("../../Utils/Security/encryption.security");
 class AuthService {
     constructor() { }
     signup = async (req, res) => {
@@ -29,7 +30,7 @@ class AuthService {
                 // password: await generateHash(password),
                 password,
                 // ...(phone ? { phone: encryptedPhone } : {}),
-                ...(phone && { phone }),
+                ...(phone && { phone: (0, encryption_security_1.Encrypt)(phone) }),
                 confirmEmailOTP: await (0, hash_security_1.generateHash)(otp),
                 gender,
                 confirmEmailOTPExp: Date.now() + 1 * 1000 * 60,

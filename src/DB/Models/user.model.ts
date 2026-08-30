@@ -36,6 +36,8 @@ export interface IUser {
   deviceTokens?: string[]; /** FCM Firebase Tokens */
   notificationEnabled: boolean;
 
+  lastSeen?: Date;
+
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -119,6 +121,9 @@ export const userSchema = new Schema<IUser>(
       type: Boolean,
       default: true,
     },
+    lastSeen: {
+      type: Date
+    }
   },
   {
     timestamps: true,

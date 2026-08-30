@@ -114,6 +114,9 @@ exports.userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: true,
     },
+    lastSeen: {
+        type: Date
+    }
 }, {
     timestamps: true,
     toObject: { virtuals: true },

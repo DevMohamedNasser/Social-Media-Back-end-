@@ -20,6 +20,7 @@ import {
 import connectDB from "./DB/connection";
 import path from "node:path";
 import { initializeFirebase } from "./Utils/firebase/firebase.config";
+import { initializeSocket } from "./Utils/socket/socket.service";
 
 // const limiter: RateLimitRequestHandler = rateLimit({
 //   windowMs: env.WINDOW_MS,
@@ -57,11 +58,13 @@ const bootstrap = async (): Promise<void> => {
 
   app.use(globalErrorHandler);
 
-  app.listen(env.PORT, () => {
+  const httpServer = app.listen(env.PORT, () => {
     console.log(
       chalk.bgGreen(`Server is running on http://127.0.0.1:${env.PORT}`),
     );
   });
+
+  initializeSocket(httpServer);
 };
 
 export default bootstrap;

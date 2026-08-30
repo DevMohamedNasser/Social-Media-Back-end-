@@ -17,6 +17,7 @@ const Modules_1 = require("./Modules");
 const connection_1 = __importDefault(require("./DB/connection"));
 const node_path_1 = __importDefault(require("node:path"));
 const firebase_config_1 = require("./Utils/firebase/firebase.config");
+const socket_service_1 = require("./Utils/socket/socket.service");
 // const limiter: RateLimitRequestHandler = rateLimit({
 //   windowMs: env.WINDOW_MS,
 //   limit: env.RATE_LIMIT,
@@ -46,8 +47,9 @@ const bootstrap = async () => {
         throw new error_response_1.NotFoundException("Not Found Handler (Route)");
     });
     app.use(error_response_1.globalErrorHandler);
-    app.listen(config_service_1.env.PORT, () => {
+    const httpServer = app.listen(config_service_1.env.PORT, () => {
         console.log(chalk_1.default.bgGreen(`Server is running on http://127.0.0.1:${config_service_1.env.PORT}`));
     });
+    (0, socket_service_1.initializeSocket)(httpServer);
 };
 exports.default = bootstrap;
