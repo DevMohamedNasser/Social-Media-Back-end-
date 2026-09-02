@@ -12,6 +12,7 @@ import * as validators from "../../Modules/Chat/chat.validation";
 import { Types } from "mongoose";
 import { messageModel } from "../../DB/Models/message.model";
 import { isUserOnline } from "./connected.users";
+import { notificationEvent } from "../events/notification.event";
 
 const getChatPartner = async (
   me: HUserDocument,
@@ -39,11 +40,11 @@ const findOrCreateConversation = async (
   userA: Types.ObjectId,
   userB: Types.ObjectId,
 ) => {
-  return conversationModel.findOneAndUpdate(
-    { participants: { $all: [userA, userB] } },
-    { $setOnInsert: { participants: [userA, userB] } },
-    { upsert: true, returnDocument: "after" }, // upsert: if User exists update else create then update
-  );
+  const conversation = await conversationModel.findOne({
+    participants: { $all: [userA, userB] },
+  });
+  if (conversation) return conversation;
+  return conversationModel.create({ participants: [userA, userB] });
 };
 
 export const registerChatEvents = (io: Server, socket: authedSocket): void => {
@@ -99,6 +100,17 @@ export const registerChatEvents = (io: Server, socket: authedSocket): void => {
           ...payload,
           delivered: isUserOnline(data.to),
         });
+
+        // Firebase sending notification
+        notificationEvent.emit("sendMsg", {
+          to: receiver._id,
+          sender: {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          },
+          content: data.content,
+        });
       },
     ),
   );
@@ -121,5 +133,34 @@ export const registerChatEvents = (io: Server, socket: authedSocket): void => {
         firstName: user.firstName,
       });
     }),
+  );
+
+  socket.on(
+    "markAsRead",
+    handleEvent(
+      socket,
+      "markAsRead",
+      validators.markAsReadSchema,
+      async (data) => {
+        const readAt = Date.now();
+
+        const results = await messageModel.updateMany(
+          {
+            senderId: data.from,
+            receiverId: user._id,
+            readAt: { $exists: false },
+          },
+          { readAt },
+        );
+
+        if (results.modifiedCount > 0) {
+          io.to(data.from).emit("messageRead", {
+            by: userId,
+            readAt,
+            count: results.modifiedCount,
+          });
+        }
+      },
+    ),
   );
 };

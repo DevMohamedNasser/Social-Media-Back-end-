@@ -17,7 +17,7 @@ const notifyFriends = (io, user, event, payload) => {
 };
 const registerPresenceEvents = (io, socket) => {
     const user = socket.user;
-    const userId = user?._id.toString();
+    const userId = user._id.toString();
     const isFirstDevice = (0, connected_users_1.addConnection)(userId, socket.id);
     if (isFirstDevice) {
         notifyFriends(io, user, "userOnline", {

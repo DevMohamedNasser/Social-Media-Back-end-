@@ -42,6 +42,7 @@ var NotificationTypeEnum;
     NotificationTypeEnum["postReacted"] = "Post Reacted";
     NotificationTypeEnum["postComment"] = "Post Comment";
     NotificationTypeEnum["commentReply"] = "Comment Reply";
+    NotificationTypeEnum["receiveMsg"] = "Receive Msg";
 })(NotificationTypeEnum || (exports.NotificationTypeEnum = NotificationTypeEnum = {}));
 exports.notificationSchema = new mongoose_1.Schema({
     userId: {

@@ -50,4 +50,5 @@ router.delete("/friend/:userId", (0, validation_middleware_1.validation)(validat
 router.get("/friend-requests", user_service_1.default.listFriendRequests);
 router.patch("/block/:userId", (0, validation_middleware_1.validation)(validators.userIdParamsSchema), user_service_1.default.blockUser);
 router.patch("/unblock/:userId", (0, validation_middleware_1.validation)(validators.userIdParamsSchema), user_service_1.default.unblockUser);
+router.get("/profile", user_service_1.default.profile);
 exports.default = router;

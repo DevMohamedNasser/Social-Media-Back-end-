@@ -61,11 +61,15 @@ class AuthService {
     };
     login = async (req, res) => {
         const { email, password } = req.body;
+        const isAdmin = req.query.isAdmin == "true";
         // const user = await userModel.findOne({
         //   email,
         //   confirmedAt: { $exists: true },
         // });
-        const user = await user_model_1.userModel.findOne({ email });
+        const user = await user_model_1.userModel.findOne({
+            email,
+            ...(isAdmin && { role: user_enum_1.RoleEnum.ADMIN }),
+        });
         if (!user)
             throw new error_response_1.NotFoundException(`User not found, plz signup`);
         if (!user.confirmedAt)

@@ -49,4 +49,6 @@ router.patch(
   userService.unblockUser,
 );
 
+router.get("/profile", userService.profile);
+
 export default router;

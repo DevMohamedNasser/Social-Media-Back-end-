@@ -13,6 +13,7 @@ import {
 } from "./Utils/response/error.response";
 import {
   authRouter,
+  chatRouter,
   notificationRouter,
   postRouter,
   userRouter,
@@ -51,6 +52,7 @@ const bootstrap = async (): Promise<void> => {
   app.use("/api/v1/post", postRouter);
   app.use("/api/v1/user", userRouter);
   app.use("/api/v1/notification", notificationRouter);
+  app.use("/api/v1/chat", chatRouter);
 
   app.use("/:dummy", (req: Request, res: Response) => {
     throw new NotFoundException("Not Found Handler (Route)");

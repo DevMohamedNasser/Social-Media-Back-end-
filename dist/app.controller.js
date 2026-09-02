@@ -43,6 +43,7 @@ const bootstrap = async () => {
     app.use("/api/v1/post", Modules_1.postRouter);
     app.use("/api/v1/user", Modules_1.userRouter);
     app.use("/api/v1/notification", Modules_1.notificationRouter);
+    app.use("/api/v1/chat", Modules_1.chatRouter);
     app.use("/:dummy", (req, res) => {
         throw new error_response_1.NotFoundException("Not Found Handler (Route)");
     });

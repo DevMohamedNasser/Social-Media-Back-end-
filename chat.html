@@ -78,6 +78,9 @@
       button.grey {
         background: #475569;
       }
+      button.admin {
+        background: #9333ea;
+      }
       .status {
         margin-left: auto;
         font-size: 13px;
@@ -153,7 +156,7 @@
         font-size: 13px;
       }
 
-      /* chat */
+      /* ================= CHAT ================= */
       .chat {
         flex: 1;
         display: flex;
@@ -265,7 +268,8 @@
         type="password"
         placeholder="password"
       />
-      <button id="btnLogin">Login &amp; Connect</button>
+      <button id="btnLogin">Login & Connect</button>
+      <button id="btnLoginAdmin" class="admin">Login as Admin</button>
       <button id="btnDisconnect" class="grey" disabled>Disconnect</button>
       <div class="status">
         <span class="dot" id="statusDot"></span>
@@ -274,8 +278,9 @@
     </div>
 
     <!-- ================= MAIN ================= -->
+
     <div class="main">
-      <!-- friends -->
+      <!-- FRIENDS -->
       <div class="side">
         <h3>Friends</h3>
         <div class="friends" id="friends">
@@ -318,14 +323,14 @@
 
     <!-- the Socket.IO client library -->
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-    <script>
+    <script type="module">
+      import { getFCMToken } from "./test.getFCMToken.js";
       // ============================================================
       //  SMALL HELPERS
       // ============================================================
       const $ = (id) => document.getElementById(id);
       const logEl = $("log");
 
-      // write one line in the right panel, so we SEE every socket event
       const log = (msg, cls = "") => {
         const time = new Date().toLocaleTimeString();
         logEl.insertAdjacentHTML(
@@ -337,86 +342,145 @@
       // ============================================================
       //  STATE (the memory of this page)
       // ============================================================
-      let socket = null; // the socket connection
-      let token = ""; // the access token (JWT)
-      let me = null; // my user object
-      let friends = []; // my friends list
-      let activeFriend = null; // the friend I am chatting with now
-      let onlineIds = []; // ids of the friends who are online
-      let unread = {}; // { friendId: number of new messages }
-      let typingTimer = null; // to send "stopTyping" automatically
-
-      // remember the email between reloads (easier when testing)
+      let socket = null;
+      let token = "";
+      let me = null;
+      let friends = [];
+      let activeFriend = null;
+      let onlineIds = [];
+      let unread = {};
+      let typingTimer = null;
+      // USER or ADMIN
+      let role = "USER";
+      // remember email
       $("email").value = localStorage.getItem("chatEmail") || "";
 
       // ============================================================
       //  1) LOGIN  -> get the access token from the REST API
       // ============================================================
-      $("btnLogin").onclick = async () => {
+      const login = async (isAdmin = false) => {
         const email = $("email").value.trim();
         const password = $("password").value;
-        if (!email || !password)
+
+        if (!email || !password) {
           return log("email and password are required", "err");
+        }
 
         try {
-          log("logging in…");
+          role = isAdmin ? "ADMIN" : "USER";
+          log(isAdmin ? "logging in as ADMIN…" : "logging in as USER…");
+          // REST login
           const response = await fetch(
-            "http://localhost:3000/api/v1/auth/login",
+            `http://localhost:3000/api/v1/auth/login?isAdmin=${isAdmin}`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, password }),
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email,
+                password,
+              }),
             },
           );
           const result = await response.json();
-
-          if (!response.ok)
+          if (!response.ok) {
             return log(`login failed: ${result.message}`, "err");
-
-          token = result.data.accessToken;
+          }
+          token = result.tokens.accessToken;
           localStorage.setItem("chatEmail", email);
-          log("login ok", "ok");
-
-          await loadProfile(); // who am I + my friends
-          connectSocket(); // then open the socket
+          log(`login ok — role: ${role}`, "ok");
+          await loadProfile();
+          await registerDeviceToken();
+          connectSocket();
         } catch (error) {
           log(`login error: ${error.message}`, "err");
         }
       };
 
+      // normal user login
+      $("btnLogin").onclick = () => {
+        login(false);
+      };
+
+      // admin login
+      $("btnLoginAdmin").onclick = () => {
+        login(true);
+      };
+
       // ============================================================
-      //  2) PROFILE -> my name and my friends
+      // PROFILE
       // ============================================================
       const loadProfile = async () => {
         const response = await fetch(
           "http://localhost:3000/api/v1/user/profile",
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `${role} ${token}`,
+            },
           },
         );
         const result = await response.json();
-
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to load profile");
+        }
         me = result.data.user;
         friends = me.friends || [];
-
         log(`I am ${me.firstName} — ${friends.length} friend(s)`, "ok");
         renderFriends();
+      };
+
+      // ============================================================
+      //  3) FCM token for sending notifications
+      // ============================================================
+      const registerDeviceToken = async () => {
+        try {
+          const fcmToken = await getFCMToken();
+
+          const response = await fetch(
+            "http://localhost:3000/api/v1/notification/device-token",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `${role} ${token}`,
+              },
+              body: JSON.stringify({
+                token: fcmToken,
+              }),
+            },
+          );
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(
+              result.message || "Failed to register device token",
+            );
+          }
+
+          log("FCM device token registered successfully", "ok");
+        } catch (error) {
+          // مهم: فشل FCM لا يمنع الـ Socket من الاتصال
+          log(`FCM token error: ${error.message}`, "err");
+        }
       };
 
       // ============================================================
       //  3) CONNECT THE SOCKET
       // ============================================================
       const connectSocket = () => {
-        // We send the token in "auth". The server middleware (io.use)
-        // reads it in socket.handshake.auth.token
+        // close old socket if exists
+        if (socket) {
+          socket.disconnect();
+        }
         socket = io("http://127.0.0.1:3000", {
-          auth: { token: `Bearer ${token}` },
+          auth: {
+            token: `${role} ${token}`,
+          },
         });
 
-        // ---------- connection events ----------
         socket.on("connect", () => {
           setStatus(true, `connected (${socket.id})`);
-          log("socket connected", "ok");
+          log(`socket connected as ${role}`, "ok");
           $("btnDisconnect").disabled = false;
         });
 
@@ -428,20 +492,20 @@
         socket.on("disconnect", (reason) => {
           setStatus(false, "disconnected");
           log(`socket disconnected: ${reason}`, "err");
+          $("btnDisconnect").disabled = true;
         });
 
         // ---------- PHASE 1: presence ----------
-
-        // when I connect, the server sends me the friends already online
         socket.on("onlineFriends", (data) => {
           onlineIds = data.friends;
           log(`onlineFriends: ${onlineIds.length} online`);
           renderFriends();
         });
-
-        // a friend just came online
+        // friend online
         socket.on("userOnline", (data) => {
-          if (!onlineIds.includes(data.userId)) onlineIds.push(data.userId);
+          if (!onlineIds.includes(data.userId)) {
+            onlineIds.push(data.userId);
+          }
           log(`🟢 userOnline: ${data.firstName}`, "ok");
           renderFriends();
           updateChatStatus();
@@ -455,44 +519,42 @@
           updateChatStatus();
         });
 
-        // ---------- PHASE 3: chat ----------
-
-        // somebody sent me a message
+        // ========================================================
+        // NEW MESSAGE
+        // ========================================================
         socket.on("newMessage", (message) => {
           const from = message.sender._id;
           log(`📩 newMessage from ${message.sender.firstName}`, "ok");
-
-          // if his chat is open -> show the bubble and mark as read
           if (activeFriend && activeFriend._id === from) {
             addBubble(message, false);
             socket.emit("markAsRead", { from });
           } else {
-            // else -> add +1 on the red badge
             unread[from] = (unread[from] || 0) + 1;
             renderFriends();
           }
         });
 
-        // MY message was saved.
-        // There is no acknowledgement, so THIS event is the confirmation.
-        // It arrives on the device that sent it AND on my other devices,
-        // because the server uses io.to(myId) and not socket.to(myId).
+        // ========================================================
+        // MESSAGE SENT
+        // ========================================================
         socket.on("messageSent", (message) => {
           log(`📤 messageSent (delivered: ${message.delivered})`, "ok");
 
-          // draw the bubble only if the chat of this person is open
           if (activeFriend && activeFriend._id === message.receiverId) {
             addBubble(message, true);
           }
         });
 
-        // ONE listener for every error of every event.
-        // The server sends this instead of answering a callback.
+        // ========================================================
+        // SOCKET ERROR
+        // ========================================================
         socket.on("socketError", (data) => {
           log(`❌ ${data.event}: ${data.error}`, "err");
         });
 
-        // the other person is writing
+        // ========================================================
+        // TYPING
+        // ========================================================
         socket.on("userTyping", (data) => {
           if (activeFriend && activeFriend._id === data.userId) {
             $("typing").textContent = `${data.firstName} is typing…`;
@@ -505,66 +567,80 @@
           }
         });
 
-        // he read my messages -> turn the ✓✓ blue
-        socket.on("messagesRead", (data) => {
+        // ========================================================
+        // MESSAGES READ
+        // ========================================================
+        socket.on("messageRead", (data) => {
           log(`✓✓ messagesRead by ${data.by.slice(-6)} (${data.count})`, "ok");
           document.querySelectorAll(".msg.mine .meta").forEach((meta) => {
             meta.textContent = meta.textContent.replace("✓", "✓✓");
           });
         });
       };
-
       // ============================================================
-      //  4) DISCONNECT (to show the "offline" event to the other side)
+      // DISCONNECT
       // ============================================================
       $("btnDisconnect").onclick = () => {
         socket?.disconnect();
+
         $("btnDisconnect").disabled = true;
       };
-
+      // ============================================================
+      // STATUS
+      // ============================================================
       const setStatus = (on, text) => {
         $("statusDot").className = on ? "dot on" : "dot";
         $("statusText").textContent = text;
       };
-
       // ============================================================
-      //  5) THE FRIENDS LIST
+      // FRIENDS
       // ============================================================
       const renderFriends = () => {
         if (!friends.length) {
-          $("friends").innerHTML =
-            '<div class="empty">No friends yet.<br><br>Add a friend first with<br>POST /api/v1/user/friend-request/:userId</div>';
+          $("friends").innerHTML = `
+              <div class="empty">
+                No friends yet.
+                <br><br>
+                Add a friend first.
+              </div>
+            `;
           return;
         }
-
         $("friends").innerHTML = friends
           .map((friend) => {
             const isOnline = onlineIds.includes(friend._id);
             const isActive = activeFriend && activeFriend._id === friend._id;
             const count = unread[friend._id];
             return `
-              <div class="friend ${isActive ? "active" : ""}" data-id="${friend._id}">
-                <span class="dot ${isOnline ? "on" : ""}"></span>
-                <span>${friend.firstName} ${friend.lastName}</span>
+              <div
+                class="friend ${isActive ? "active" : ""}"
+                data-id="${friend._id}"
+              >
+                <span
+                  class="dot ${isOnline ? "on" : ""}"
+                ></span>
+                <span>
+                  ${friend.firstName}
+                  ${friend.lastName}
+                </span>
                 ${count ? `<span class="badge">${count}</span>` : ""}
-              </div>`;
+              </div>
+            `;
           })
           .join("");
 
-        // click on a friend -> open his chat
         document.querySelectorAll(".friend").forEach((element) => {
           element.onclick = () => openChat(element.dataset.id);
         });
       };
 
       // ============================================================
-      //  6) OPEN ONE CHAT -> load the OLD messages with REST
+      // OPEN CHAT
       // ============================================================
       const openChat = async (friendId) => {
         activeFriend = friends.find((friend) => friend._id === friendId);
         if (!activeFriend) return;
 
-        // clear the red badge of this friend
         delete unread[friendId];
         renderFriends();
 
@@ -576,18 +652,21 @@
         $("messages").innerHTML = "";
         $("typing").textContent = "";
 
-        // REST = history. Socket = live.
+        // REST = old messages
         const response = await fetch(
           `http://localhost:3000/api/v1/chat/${friendId}?page=1&limit=50`,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `${role} ${token}`,
+            },
           },
         );
         const result = await response.json();
-
+        if (!response.ok) {
+          return log(`failed to load messages: ${result.message}`, "err");
+        }
         log(`loaded ${result.data.messages.length} old message(s)`);
-
-        result.data.messages.forEach((message) => {
+        result.data.messages.reverse().forEach((message) => {
           const senderId = message.senderId?._id || message.senderId;
           addBubble(
             {
@@ -598,11 +677,14 @@
             senderId === me._id,
           );
         });
-
-        // I opened the chat -> tell him I read his messages
-        socket?.emit("markAsRead", { from: friendId });
+        // mark messages as read
+        socket?.emit("markAsRead", {
+          from: friendId,
+        });
       };
-
+      // ============================================================
+      // CHAT STATUS
+      // ============================================================
       const updateChatStatus = () => {
         if (!activeFriend) return;
         const isOnline = onlineIds.includes(activeFriend._id);
@@ -621,16 +703,17 @@
 
         $("messages").insertAdjacentHTML(
           "beforeend",
-          `<div class="msg ${isMine ? "mine" : "theirs"}">
-             ${escapeHtml(message.content)}
-             <div class="meta">${time}${ticks}</div>
-           </div>`,
+          `
+            <div class="msg ${isMine ? "mine" : "theirs"}">
+              ${escapeHtml(message.content)}
+              <div class="meta">
+                ${time}${ticks}
+              </div>
+            </div>
+          `,
         );
-
-        // always scroll to the newest message
         $("messages").scrollTop = $("messages").scrollHeight;
       };
-
       // never put raw user text inside HTML (protection against XSS)
       const escapeHtml = (text) =>
         String(text).replace(
@@ -644,48 +727,51 @@
               "'": "&#39;",
             })[character],
         );
-
       // ============================================================
-      //  8) SEND A MESSAGE
+      // SEND MESSAGE
       // ============================================================
       const sendMessage = () => {
         const content = $("input").value.trim();
-        if (!content || !activeFriend || !socket) return;
-
-        // We only SEND. There is no callback and no answer here.
-        //
-        // The bubble is NOT drawn now. We wait for the server to send
-        // back the event "messageSent" - that is our proof that the
-        // message was really saved in the database.
-        // If it failed, the server sends "socketError" instead.
-        socket.emit("sendMessage", { to: activeFriend._id, content });
-
+        if (!content || !activeFriend || !socket) {
+          return;
+        }
+        socket.emit("sendMessage", {
+          to: activeFriend._id,
+          content,
+        });
         $("input").value = "";
-        socket.emit("stopTyping", { to: activeFriend._id });
+        socket.emit("stopTyping", {
+          to: activeFriend._id,
+        });
       };
-
       $("btnSend").onclick = sendMessage;
-
       // ============================================================
-      //  9) TYPING INDICATOR
+      // TYPING INDICATOR
       // ============================================================
       $("input").oninput = () => {
-        if (!activeFriend || !socket) return;
-
-        socket.emit("typing", { to: activeFriend._id });
-
-        // if the user stops writing for 1.5 second -> send "stopTyping"
+        if (!activeFriend || !socket) {
+          return;
+        }
+        socket.emit("typing", {
+          to: activeFriend._id,
+        });
         clearTimeout(typingTimer);
         typingTimer = setTimeout(() => {
-          socket.emit("stopTyping", { to: activeFriend._id });
+          socket.emit("stopTyping", {
+            to: activeFriend._id,
+          });
         }, 1500);
       };
 
       // Enter = send
       $("input").onkeydown = (event) => {
-        if (event.key === "Enter") sendMessage();
+        if (event.key === "Enter") {
+          sendMessage();
+        }
       };
-
+      // ============================================================
+      // READY
+      // ============================================================
       log("Ready. Login with a confirmed account.", "muted");
     </script>
   </body>

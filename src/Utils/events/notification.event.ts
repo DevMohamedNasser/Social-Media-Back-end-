@@ -103,3 +103,16 @@ notificationEvent.on(
     });
   },
 );
+
+notificationEvent.on(
+  "sendMsg",
+  async (data: { to: Types.ObjectId; sender: IActor; content: string }) => {
+    await sendNotification({
+      userId: data.to,
+      senderId: data.sender._id,
+      type: NotificationTypeEnum.receiveMsg,
+      title: "New Message",
+      body: `${fullName(data.sender)} send: ${data.content}`,
+    }, false);
+  },
+);

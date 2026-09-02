@@ -6,6 +6,7 @@ export enum NotificationTypeEnum {
   postReacted = "Post Reacted",
   postComment = "Post Comment",
   commentReply = "Comment Reply",
+  receiveMsg = "Receive Msg",
 }
 
 export interface INotification {

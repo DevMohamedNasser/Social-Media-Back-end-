@@ -29,7 +29,8 @@ export const initializeSocket = (httpServer: httpServer): Server => {
   /** Socket Middleware */
   io.use(async (socket: authedSocket, next) => {
     try {
-      const authorization = socket.handshake.headers.authorization;
+      // const authorization = socket.handshake.headers.authorization;
+      const authorization = socket.handshake.auth.token;
 
       const { user } = await decodedToken({
         authorization,
@@ -51,7 +52,7 @@ export const initializeSocket = (httpServer: httpServer): Server => {
     const user = socket.user;
     const userId = user?._id.toString() as string;
 
-    console.log(`[Socket] connected: ${user?.username}, ${socket.id}`);
+    // console.log(`[Socket] connected: ${user?.username}, ${socket.id}`);
 
     // add user in empty room as if client is online from many devices. If user received message It will delivered to all devices
     socket.join(userId);

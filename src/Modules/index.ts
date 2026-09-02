@@ -2,3 +2,4 @@ export * from "./Auth/index";
 export * from "./Post/index";
 export * from "./User/index";
 export * from "./Notifications/index";
+export * from "./Chat/index";

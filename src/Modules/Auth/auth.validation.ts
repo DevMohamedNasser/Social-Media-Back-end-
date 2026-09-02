@@ -8,6 +8,9 @@ export const loginSchema = {
       .string({ error: "password is required" })
       .min(6, { error: "password must be at least 6 chars long" }),
   }),
+  query: z.object({
+    isAdmin: z.string().optional(),
+  }),
 };
 
 export const resendOTPSchema = {
@@ -82,7 +85,12 @@ export const signupSchema = {
         .string({ error: "password is required" })
         .min(6, { error: "password must be at least 6 chars long" }),
       gender: z.enum(GenderEnum).default(GenderEnum.MALE),
-      phone: z.string().regex(/^(?:0|\+20|020)1[0125][\d]{8}$/, {error: "Invalid egyptian phone number"}).optional()
+      phone: z
+        .string()
+        .regex(/^(?:0|\+20|020)1[0125][\d]{8}$/, {
+          error: "Invalid egyptian phone number",
+        })
+        .optional(),
     })
     .superRefine((data, ctx) => {
       if (data.password !== data.confirmPassword) {

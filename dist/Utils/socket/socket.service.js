@@ -22,7 +22,8 @@ const initializeSocket = (httpServer) => {
     /** Socket Middleware */
     io.use(async (socket, next) => {
         try {
-            const authorization = socket.handshake.headers.authorization;
+            // const authorization = socket.handshake.headers.authorization;
+            const authorization = socket.handshake.auth.token;
             const { user } = await (0, authentication_middleware_1.decodedToken)({
                 authorization,
                 tokenType: authentication_middleware_1.TokenTypeEnum.access,
@@ -38,7 +39,7 @@ const initializeSocket = (httpServer) => {
     io.on("connection", (socket) => {
         const user = socket.user;
         const userId = user?._id.toString();
-        console.log(`[Socket] connected: ${user?.username}, ${socket.id}`);
+        // console.log(`[Socket] connected: ${user?.username}, ${socket.id}`);
         // add user in empty room as if client is online from many devices. If user received message It will delivered to all devices
         socket.join(userId);
         (0, precence_socket_1.registerPresenceEvents)(io, socket);

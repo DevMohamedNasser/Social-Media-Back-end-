@@ -57,3 +57,12 @@ exports.notificationEvent.on("commentReply", async (data) => {
         commentId: data.commentId,
     });
 });
+exports.notificationEvent.on("sendMsg", async (data) => {
+    await (0, push_service_1.sendNotification)({
+        userId: data.to,
+        senderId: data.sender._id,
+        type: notification_model_1.NotificationTypeEnum.receiveMsg,
+        title: "New Message",
+        body: `${fullName(data.sender)} send: ${data.content}`,
+    }, false);
+});

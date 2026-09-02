@@ -18,3 +18,4 @@ __exportStar(require("./Auth/index"), exports);
 __exportStar(require("./Post/index"), exports);
 __exportStar(require("./User/index"), exports);
 __exportStar(require("./Notifications/index"), exports);
+__exportStar(require("./Chat/index"), exports);

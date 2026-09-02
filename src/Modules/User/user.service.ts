@@ -181,6 +181,15 @@ class UserService {
 
     return res.status(200).json({ message: "User unblocked successfully" });
   };
+
+  profile = async (req: Request, res: Response): Promise<Response> => {
+    const user = await req.user?.populate(
+      "friends",
+      "firstName lastName profilePic",
+    );
+
+    return res.status(200).json({ message: "Success", data: { user } });
+  };
 }
 
 export default new UserService();

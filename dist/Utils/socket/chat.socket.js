@@ -41,6 +41,7 @@ const socket_helper_1 = require("./socket.helper");
 const validators = __importStar(require("../../Modules/Chat/chat.validation"));
 const message_model_1 = require("../../DB/Models/message.model");
 const connected_users_1 = require("./connected.users");
+const notification_event_1 = require("../events/notification.event");
 const getChatPartner = async (me, otherId) => {
     // if (me._id.toString() === otherId)
     //     throw new BadRequestException("U can't chat with urself")
@@ -56,7 +57,12 @@ const getChatPartner = async (me, otherId) => {
     return other;
 };
 const findOrCreateConversation = async (userA, userB) => {
-    return conversation_model_1.conversationModel.findOneAndUpdate({ participants: { $all: [userA, userB] } }, { $setOnInsert: { participants: [userA, userB] } }, { upsert: true, returnDocument: "after" });
+    const conversation = await conversation_model_1.conversationModel.findOne({
+        participants: { $all: [userA, userB] },
+    });
+    if (conversation)
+        return conversation;
+    return conversation_model_1.conversationModel.create({ participants: [userA, userB] });
 };
 const registerChatEvents = (io, socket) => {
     const user = socket.user;
@@ -93,6 +99,16 @@ const registerChatEvents = (io, socket) => {
             ...payload,
             delivered: (0, connected_users_1.isUserOnline)(data.to),
         });
+        // Firebase sending notification
+        notification_event_1.notificationEvent.emit("sendMsg", {
+            to: receiver._id,
+            sender: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+            },
+            content: data.content,
+        });
     }));
     socket.on("typing", (0, socket_helper_1.handleEvent)(socket, "typing", validators.typingSchema, (data) => {
         io.to(data.to).emit("userTyping", {
@@ -105,6 +121,21 @@ const registerChatEvents = (io, socket) => {
             userId,
             firstName: user.firstName,
         });
+    }));
+    socket.on("markAsRead", (0, socket_helper_1.handleEvent)(socket, "markAsRead", validators.markAsReadSchema, async (data) => {
+        const readAt = Date.now();
+        const results = await message_model_1.messageModel.updateMany({
+            senderId: data.from,
+            receiverId: user._id,
+            readAt: { $exists: false },
+        }, { readAt });
+        if (results.modifiedCount > 0) {
+            io.to(data.from).emit("messageRead", {
+                by: userId,
+                readAt,
+                count: results.modifiedCount,
+            });
+        }
     }));
 };
 exports.registerChatEvents = registerChatEvents;

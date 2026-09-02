@@ -34,7 +34,7 @@ const buildData = (payload: INotificationPayload): Record<string, string> => {
 };
 
 export const sendNotification = async (
-  payload: INotificationPayload,
+  payload: INotificationPayload, storeDB: boolean = true
 ): Promise<void> => {
   try {
     if (payload.userId.equals(payload.senderId)) return;
@@ -47,7 +47,7 @@ export const sendNotification = async (
       return;
 
     // Store Notification in DB
-    await notificationModel.create({
+    (storeDB && await notificationModel.create({
       userId: payload.userId,
       senderId: payload.senderId,
       type: payload.type,
@@ -56,7 +56,7 @@ export const sendNotification = async (
       ...(payload.postId && { postId: payload.postId }),
       ...(payload.commentId && { commentId: payload.commentId }),
       ...(payload.requestId && { requestId: payload.requestId }),
-    });
+    }));
 
     if (!recipient.notificationEnabled) {
       console.log("[push] skipped - User has notification disabled");

@@ -22,7 +22,7 @@ const buildData = (payload) => {
         data.requestId = payload.requestId.toString();
     return data;
 };
-const sendNotification = async (payload) => {
+const sendNotification = async (payload, storeDB = true) => {
     try {
         if (payload.userId.equals(payload.senderId))
             return;
@@ -34,7 +34,7 @@ const sendNotification = async (payload) => {
         if (recipient.blockedUsers.some((id) => id.equals(payload.senderId)))
             return;
         // Store Notification in DB
-        await notification_model_1.notificationModel.create({
+        (storeDB && await notification_model_1.notificationModel.create({
             userId: payload.userId,
             senderId: payload.senderId,
             type: payload.type,
@@ -43,7 +43,7 @@ const sendNotification = async (payload) => {
             ...(payload.postId && { postId: payload.postId }),
             ...(payload.commentId && { commentId: payload.commentId }),
             ...(payload.requestId && { requestId: payload.requestId }),
-        });
+        }));
         if (!recipient.notificationEnabled) {
             console.log("[push] skipped - User has notification disabled");
             return;
